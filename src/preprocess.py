@@ -9,7 +9,6 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 DATA_DIR = "data/physionet/physionet.org/files/noneeg/1.0.0/"
 
-# Step 1: Parse header file for metadata
 def parse_header_file(header_path):
     metadata = {}
     with open(header_path, 'r') as file:
@@ -25,7 +24,6 @@ def parse_header_file(header_path):
                 metadata["Sampling Frequency"] = float(parts[2])
     return metadata
 
-# Step 2: Load signal data for a subject
 def load_signal(subject_id):
     rec1 = os.path.join(DATA_DIR, f"Subject{subject_id}_AccTempEDA")
     rec2 = os.path.join(DATA_DIR, f"Subject{subject_id}_SpO2HR")
@@ -47,12 +45,44 @@ def load_signal(subject_id):
     df1 = df1.iloc[:len(df2_exp)]
     df = pd.concat([df1.reset_index(drop=True), df2_exp], axis=1)
 
-    # Add task labels (placeholder if annotations are missing)
-    df['task'] = "Unknown"
+    try:
+        annotations = wfdb.rdann(rec1, 'atr')
+        task_stages = [''] * len(df)
+        for i in range(len(annotations.sample) - 1):
+            start_idx = annotations.sample[i]
+            end_idx = annotations.sample[i + 1]
+            label = annotations.aux_note[i]
+            task_stages[start_idx:end_idx] = [label] * (end_idx - start_idx)
+        if len(annotations.sample) > 0:
+            start_idx = annotations.sample[-1]
+            task_stages[start_idx:] = [annotations.aux_note[-1]] * (len(df) - start_idx)
+        df['task'] = task_stages
+    except:
+        df['task'] = "Unknown"
+
     df['subject_id'] = subject_id
     return df
 
-# Step 3: Label stress vs. relax
+def label_relaxation_stage(df):
+    current_subject = None
+    relaxation_counter = 0
+    last_task = None
+
+    for index, row in df.iterrows():
+        if row['subject_id'] != current_subject:
+            current_subject = row['subject_id']
+            relaxation_counter = 0
+            last_task = None
+
+        if row['task'] == 'Relax':
+            if last_task != 'Relax':
+                relaxation_counter += 1
+            df.at[index, 'task'] = f"Relax{relaxation_counter}"
+
+        last_task = row['task']
+
+    return df
+
 def label_combined_stress(df):
     stress = ['CognitiveStress', 'EmotionalStress', 'PhysicalStress']
     relax = ['Relax1', 'Relax2', 'Relax3', 'Relax4']
@@ -61,7 +91,6 @@ def label_combined_stress(df):
     )
     return df
 
-# Step 4: Normalize and apply windowed averaging
 def normalize_and_window(df, window_size=10):
     features = ['ax', 'ay', 'az', 'temp', 'EDA', 'SpO2', 'HR']
     scaler = MinMaxScaler()
@@ -79,7 +108,6 @@ def normalize_and_window(df, window_size=10):
 
     return df_sorted.groupby(id_cols, group_keys=False).apply(downsample).reset_index(drop=True)
 
-# Step 5: Split and reduce dimension
 def split_and_reduce(df, method='rp', test_size=0.2, n_components=5):
     features = ['ax', 'ay', 'az', 'temp', 'EDA', 'SpO2', 'HR']
     X = df[features]
@@ -102,14 +130,14 @@ def split_and_reduce(df, method='rp', test_size=0.2, n_components=5):
 
     return X_train_reduced, X_test_reduced, y_train.reset_index(drop=True), y_test.reset_index(drop=True)
 
-# Step 6: Main preprocessing pipeline
 def preprocess_all_subjects(n_subjects=20, dim_red_method='rp', n_components=5):
     all_subjects = []
     for i in range(1, n_subjects + 1):
         df = load_signal(i)
-        df = label_combined_stress(df)
         all_subjects.append(df)
 
     full_df = pd.concat(all_subjects, ignore_index=True)
+    full_df = label_relaxation_stage(full_df)
+    full_df = label_combined_stress(full_df)
     downsampled_df = normalize_and_window(full_df)
     return split_and_reduce(downsampled_df, method=dim_red_method, n_components=n_components)

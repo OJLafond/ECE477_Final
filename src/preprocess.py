@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.random_projection import GaussianRandomProjection
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-DATA_DIR = "data/physionet/"
+DATA_DIR = "data/physionet/physionet.org/files/noneeg/1.0.0/"
 
 # Step 1: Parse header file for metadata
 def parse_header_file(header_path):

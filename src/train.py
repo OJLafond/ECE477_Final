@@ -1,5 +1,4 @@
 def run_training_scheme(X, y, scheme="A", checkpoint_dir="results", epochs_per_step=10):
-    set_seed(0)
 
     params_dict = {
         'A': {'init_size': 20, 'max_size': 150, 'sparse': True, 'sparse_ratio': 0.3, 'loops': 10, 'full_data': False},

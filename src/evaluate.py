@@ -1,25 +1,11 @@
-import os
-import numpy as np
-import torch
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, roc_auc_score, confusion_matrix,
-    roc_curve, precision_recall_curve
-)
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-
 def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
     """Evaluate a trained SDNN model and generate plots."""
     os.makedirs(save_dir, exist_ok=True)
 
-    # Binary encode labels if needed
-    if isinstance(y_test[0], str):
-        y_test = np.where(np.array(y_test) == 'Stress', 1, 0)
+    X_test = np.array(X_test)
+    y_test = np.where(np.array(y_test) == 'Stress', 1, 0) if isinstance(y_test[0], str) else np.array(y_test)
 
-    sdnet.loadData(mode='test', X_train=X_test, y_train=y_test,
-                   X_test=X_test, y_test=y_test)
+    sdnet.loadData(mode='test', X_test=X_test, y_test=y_test)
 
     all_preds, all_probs, all_labels = [], [], []
 
@@ -53,7 +39,7 @@ def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
     print(f"AUC      : {auc_score:.4f}")
     print(f"Confusion Matrix:\n{cm}")
 
-    # --- Plot Confusion Matrix ---
+    # Confusion Matrix
     plt.figure(figsize=(5, 4))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Relax", "Stress"], yticklabels=["Relax", "Stress"])
     plt.xlabel("Predicted")
@@ -63,7 +49,7 @@ def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
     plt.savefig(os.path.join(save_dir, f"confusion_matrix_{scheme}.png"))
     plt.close()
 
-    # --- Plot ROC Curve ---
+    # ROC Curve
     fpr, tpr, _ = roc_curve(all_labels, all_probs)
     plt.figure()
     plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
@@ -76,7 +62,7 @@ def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
     plt.savefig(os.path.join(save_dir, f"roc_curve_{scheme}.png"))
     plt.close()
 
-    # --- Plot Precision-Recall Curve ---
+    # Precision-Recall Curve
     prec, rec, _ = precision_recall_curve(all_labels, all_probs)
     plt.figure()
     plt.plot(rec, prec)
@@ -87,11 +73,15 @@ def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
     plt.savefig(os.path.join(save_dir, f"pr_curve_{scheme}.png"))
     plt.close()
 
+    # Optionally compute sparsity
+    sparsity = compute_sparsity(sdnet)
+
     return {
         'Accuracy': acc,
         'Precision': precision,
         'Recall': recall,
         'F1': f1,
         'AUC': auc_score,
-        'Confusion Matrix': cm
+        'Confusion Matrix': cm,
+        'Sparsity (%)': sparsity
     }

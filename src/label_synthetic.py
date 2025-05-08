@@ -4,8 +4,8 @@ from sklearn.model_selection import train_test_split
 import joblib
 import os
 
-
-def train_labeler(X_train, y_train, X_val=None, y_val=None, max_depth_range=(1, 30), n_estimators=500):
+# change back to 30 later
+def train_labeler(X_train, y_train, X_val=None, y_val=None, max_depth_range=(1, 2), n_estimators=500):
     """Train a random forest and return the best one based on validation accuracy."""
     best_acc = -np.inf
     best_model = None

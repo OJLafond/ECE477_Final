@@ -1,92 +1,118 @@
-def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
-    """Evaluate a trained SDNN model and generate plots."""
-    os.makedirs(save_dir, exist_ok=True)
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-    X_test = np.array(X_test)
-    y_test = np.where(np.array(y_test) == 'Stress', 1, 0) if isinstance(y_test[0], str) else np.array(y_test)
+from sklearn.metrics import (
+    roc_curve,
+    auc,
+    precision_recall_curve
+)
 
-    sdnet.loadData(mode='test', X_test=X_test, y_test=y_test)
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+import pandas as pd
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
-    all_preds, all_probs, all_labels = [], [], []
+# 1. Update model_stats with post-fine-tuning metrics
+for scheme in model_stats:
+    pre_acc = scheme_accuracies[scheme]
+    post_acc = fine_tune_metrics[scheme]['Accuracy']
+    
+    pre_params = model_stats[scheme]['Num Params (Pre)']
+    post_params = model_stats[scheme]['Num Params (Post)']
 
-    with torch.no_grad():
-        for data in sdnet.testloader:
-            inputs, labels = data
-            outputs = sdnet.forward(inputs, retain_grad=False)
-            probs = torch.softmax(outputs, dim=1)[:, 1]
-            preds = (probs > 0.5).long()
+    model_stats[scheme]['Accuracy (Pre)'] = pre_acc
+    model_stats[scheme]['Accuracy (Post)'] = post_acc
+    model_stats[scheme]['Compactness (Pre)'] = pre_acc / pre_params
+    model_stats[scheme]['Compactness (Post)'] = post_acc / post_params
 
-            all_probs.extend(probs.cpu().numpy())
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+# 2. Plot: Pre vs Post Fine-Tuning Accuracy
+schemes = list(model_stats.keys())
+pre_accuracies = [model_stats[s]['Accuracy (Pre)'] for s in schemes]
+post_accuracies = [model_stats[s]['Accuracy (Post)'] for s in schemes]
 
-    all_preds = np.array(all_preds)
-    all_probs = np.array(all_probs)
-    all_labels = np.array(all_labels)
+x = np.arange(len(schemes))
+bar_width = 0.35
 
-    acc = accuracy_score(all_labels, all_preds)
-    precision = precision_score(all_labels, all_preds, zero_division=0)
-    recall = recall_score(all_labels, all_preds, zero_division=0)
-    f1 = f1_score(all_labels, all_preds, zero_division=0)
-    auc_score = roc_auc_score(all_labels, all_probs)
-    cm = confusion_matrix(all_labels, all_preds)
+plt.figure(figsize=(8, 5))
+plt.bar(x - bar_width/2, pre_accuracies, width=bar_width, label='Pre Fine-Tuning', color='skyblue')
+plt.bar(x + bar_width/2, post_accuracies, width=bar_width, label='Post Fine-Tuning', color='lightgreen')
+plt.xticks(x, schemes)
+plt.ylim(0, 1)
+plt.ylabel('Test Accuracy')
+plt.title('Pre vs Post Fine-Tuning Accuracy for SCANN Schemes')
+plt.legend()
+plt.grid(axis='y')
+plt.tight_layout()
+plt.show()
 
-    print(f"\n[SCANN-{scheme}] Evaluation Metrics:")
-    print(f"Accuracy : {acc:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall   : {recall:.4f}")
-    print(f"F1 Score : {f1:.4f}")
-    print(f"AUC      : {auc_score:.4f}")
-    print(f"Confusion Matrix:\n{cm}")
+# 3. Plot: Compactness Pre vs Post
+pre_compact = [model_stats[s]['Compactness (Pre)'] for s in schemes]
+post_compact = [model_stats[s]['Compactness (Post)'] for s in schemes]
+
+plt.figure(figsize=(8, 5))
+plt.bar(x - bar_width/2, pre_compact, width=bar_width, label='Pre', color='mediumpurple')
+plt.bar(x + bar_width/2, post_compact, width=bar_width, label='Post', color='mediumseagreen')
+plt.xticks(x, schemes)
+plt.ylabel('Accuracy per Parameter')
+plt.title('Compactness Score (Pre vs Post Fine-Tuning)')
+plt.legend()
+plt.grid(axis='y')
+plt.tight_layout()
+plt.show()
+
+# 4. Plot: Sparsity
+sparsities = [model_stats[s]['Sparsity (%)'] for s in schemes]
+plt.figure(figsize=(6, 5))
+plt.bar(schemes, sparsities, color='goldenrod')
+plt.ylabel('Sparsity (%)')
+plt.title('Sparsity of SCANN Schemes')
+plt.grid(axis='y')
+plt.tight_layout()
+plt.show()
+
+# 5. Summary Table
+df_summary = pd.DataFrame(model_stats).T[
+    ['Accuracy (Pre)', 'Accuracy (Post)', 'Num Params (Pre)','Num Params (Post)', 'Model Size (MB)',
+     'Sparsity (%)', 'Compactness (Pre)', 'Compactness (Post)']
+]
+display(df_summary.round(4))  # If in notebook
+# Or to print:
+print(df_summary.round(4).to_string())
+
+# 6. Confusion Matrix, ROC, PR Curves per scheme
+for scheme in schemes:
+    cm = fine_tune_metrics[scheme]['Confusion Matrix']
+    y_true = fine_tune_metrics[scheme]['Labels']
+    y_prob = fine_tune_metrics[scheme]['Probs']
 
     # Confusion Matrix
     plt.figure(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Relax", "Stress"], yticklabels=["Relax", "Stress"])
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title(f"Confusion Matrix - Scheme {scheme}")
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f"confusion_matrix_{scheme}.png"))
-    plt.close()
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0,1], yticklabels=[0,1])
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title(f'Confusion Matrix - Scheme {scheme}')
+    plt.show()
 
     # ROC Curve
-    fpr, tpr, _ = roc_curve(all_labels, all_probs)
-    plt.figure()
-    plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title(f"ROC Curve - Scheme {scheme}")
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+    plt.figure(figsize=(6, 5))
+    plt.plot(fpr, tpr, label=f'AUC = {roc_auc:.2f}')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve - Scheme {scheme}')
     plt.legend()
     plt.grid()
-    plt.savefig(os.path.join(save_dir, f"roc_curve_{scheme}.png"))
-    plt.close()
+    plt.show()
 
-    # Precision-Recall Curve
-    prec, rec, _ = precision_recall_curve(all_labels, all_probs)
-    plt.figure()
+    # Precision-Recall
+    prec, rec, _ = precision_recall_curve(y_true, y_prob)
+    plt.figure(figsize=(6, 5))
     plt.plot(rec, prec)
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.title(f"Precision-Recall Curve - Scheme {scheme}")
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title(f'Precision-Recall Curve - Scheme {scheme}')
     plt.grid()
-    plt.savefig(os.path.join(save_dir, f"pr_curve_{scheme}.png"))
-    plt.close()
-
-    # Optionally compute sparsity
-    sparsity = compute_sparsity(sdnet)
-
-    return {
-        'Accuracy': acc,
-        'Precision': precision,
-        'Recall': recall,
-        'F1': f1,
-        'AUC': auc_score,
-        'Confusion Matrix': cm,
-        'Sparsity (%)': sparsity
-    }
-
-
-def fine_tune_and_evaluate(sdnet, X_train_real, y_train_real, X_test_real, y_test_real, scheme="A", save_dir="figures", epochs=10):
-    fine_tune(sdnet, X_train_real, y_train_real, X_test_real, y_test_real, epochs=epochs)
-    return evaluate_model(sdnet, X_test_real, y_test_real, scheme=scheme, save_dir=save_dir)
+    plt.show()

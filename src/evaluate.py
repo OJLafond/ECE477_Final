@@ -85,3 +85,8 @@ def evaluate_model(sdnet, X_test, y_test, scheme="A", save_dir="figures"):
         'Confusion Matrix': cm,
         'Sparsity (%)': sparsity
     }
+
+
+def fine_tune_and_evaluate(sdnet, X_train_real, y_train_real, X_test_real, y_test_real, scheme="A", save_dir="figures", epochs=10):
+    fine_tune(sdnet, X_train_real, y_train_real, X_test_real, y_test_real, epochs=epochs)
+    return evaluate_model(sdnet, X_test_real, y_test_real, scheme=scheme, save_dir=save_dir)

@@ -2,14 +2,6 @@
 
 import random
 import torch
-
-RANDOM_STATE = 0
-np.random.seed(RANDOM_STATE)
-random.seed(RANDOM_STATE)
-
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
 import os
 import numpy as np
 import torch.optim as optim
@@ -17,6 +9,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 import shutil
+
+
+RANDOM_STATE = 0
+np.random.seed(RANDOM_STATE)
+random.seed(RANDOM_STATE)
+
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # define some util functions
 

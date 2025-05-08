@@ -5,8 +5,6 @@ def run_training_scheme(X, y, scheme="A", checkpoint_dir="results", epochs_per_s
         'B': {'init_size': 100, 'max_size': 150, 'sparse': True, 'sparse_ratio': 0.9, 'loops': 10, 'full_data': False},
         'C': {'init_size': 100, 'max_size': 150, 'sparse': True, 'sparse_ratio': 0.9, 'loops': 10, 'full_data': False},
     }
-
-    assert scheme in params_dict, f"Unsupported scheme '{scheme}'"
     params = params_dict[scheme]
 
     save_dir = os.path.join(checkpoint_dir, f"scann_{scheme.lower()}")

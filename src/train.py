@@ -24,3 +24,9 @@ def run_training_scheme(X_train, y_train, X_test, y_test, scheme, save_dir):
         else:
             model.pruneConnections()
         model.train(duration=1, folder_to_save=save_dir) #10
+
+def fine_tune(sdnet, X_train_real, y_train_real, X_test_real, y_test_real, epochs=10):
+    """Fine-tune a pretrained model on real data."""
+    print("\n[SCANN] Fine-tuning on real data...")
+    sdnet.loadData(X_train_real, y_train_real, X_test_real, y_test_real)
+    sdnet.train(duration=epochs)

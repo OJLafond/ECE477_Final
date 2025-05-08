@@ -1,4 +1,4 @@
-from model import SDNN
+from src.model import SDNN
 import numpy as np
 import os
 

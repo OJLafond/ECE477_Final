@@ -32,10 +32,25 @@ All components of the pipeline—including preprocessing, augmentation, dimensio
 
 ## Reproducing Results
 
-1. Open `stress_detection_pipeline.ipynb` in [Google Colab](https://colab.research.google.com)
+1. Run `stress_detection_pipeline.ipynb` in [Google Colab](https://colab.research.google.com)
 2. Run all cells to:
    - Preprocess the data
    - Generate synthetic data
    - Train SDNN with SCANN Schemes A, B, and C
    - Fine-tune the models on real data
    - Visualize confusion matrices, ROC curves, and compactness metrics
+
+## Code Attribution
+
+Some components of this project are adapted from coursework in the [jha-lab/ECE477-SP2025](https://github.com/jha-lab/ECE477-SP2025) repository:
+
+- **Gaussian Mixture Models, KDE functions, and Random Projections** were adapted from:  
+  `4_coviddeep_assignment.ipynb`
+- **SCANN-based training schemes (Schemes A, B, and C)** were built upon code from:  
+  `2_scann_assignment.ipynb`
+- **Principal Component Analysis (PCA)** implementation was based on:  
+  `5_soda_assignment.ipynb`
+
+These components were modified and integrated into a unified stress detection pipeline tailored for edge deployment.
+
+

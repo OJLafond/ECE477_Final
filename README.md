@@ -46,6 +46,7 @@ Some components of this project are adapted from coursework in the [jha-lab/ECE4
 
 - **Gaussian Mixture Models, KDE functions, and Random Projections** were adapted from:  
   `4_coviddeep_assignment.ipynb`
+  `3_TUTOR.ipynb`
 - **SCANN-based training schemes (Schemes A, B, and C)** were built upon code from:  
   `2_scann_assignment.ipynb`
 - **Principal Component Analysis (PCA)** implementation was based on:  
